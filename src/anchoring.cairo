@@ -57,7 +57,6 @@ mod Anchoring {
         fn anchor(ref self: ContractState, message: felt252) {
             self._is_whitelisted_caller();
             assert(!(self.message_timestamp.read(message) > 0), 'already_anchored');
-            // assert(self.whitelisted.read(get_caller_address()) == true, 'not_whitelisted_caller');
             self.message_values.write(self.size_index.read(), message);
             self.message_timestamp.write(message, get_block_timestamp());
             self.size_index.write(self.size_index.read() + 1);
