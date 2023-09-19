@@ -6,7 +6,7 @@ trait FactoryTrait<T> {
     /// @dev Function that retrieves the admin role
     fn get_admin(self: @T) -> ContractAddress;
     /// @dev Function that retrieves the proposed_admin
-    fn get_proposed_admin(self: @T) -> ContractAddress;
+    fn get_proposed_admin(self: @T) -> Option<ContractAddress>;
     /// @dev Function that allows the admin role to propose a new admin
     fn changeAdmin(ref self: T, new_admin: ContractAddress);
     /// @dev Function that allows a proposed admin to accept the admin role
@@ -20,7 +20,7 @@ trait FactoryTrait<T> {
         self: @T, anchored_contract_address: ContractAddress
     ) -> ContractAddress;
     fn get_owner_contract_index(self: @T, owner: ContractAddress) -> u16;
-    fn get_owner_contract_by_index(self: @T, owner: ContractAddress, index: u16) -> ContractAddress;
+    fn get_contract_by_owner_index(self: @T, owner: ContractAddress, index: u16) -> ContractAddress;
 }
 
 #[starknet::contract]
@@ -38,13 +38,13 @@ mod Factory {
     // Storage variable used to store the anchored value
     #[storage]
     struct Storage {
-        whitelist: LegacyMap<ContractAddress,
+        all_contracts: LegacyMap<ContractAddress,
         ContractAddress>, // anchored_contract_address, user_account_contract_address
-        contracts_owner_index: LegacyMap<ContractAddress, u16>,
+        contracts_owner_index: LegacyMap<ContractAddress, u16>, // number of generated contracts by users
         contracts_by_owner: LegacyMap<(ContractAddress, u16),
         ContractAddress>, // user_account_contract_address, List of anchored_contract_address
         admin: ContractAddress, // account wallet authorized to push new contracts
-        proposed_admin: LegacyMap<ContractAddress, ContractAddress>,
+        proposed_admin: Option<ContractAddress>, // Proposition for the admin role
         class_hash: ClassHash, // class hash of the anchoring contract
     }
 
@@ -52,7 +52,7 @@ mod Factory {
     #[constructor]
     fn constructor(ref self: ContractState, _admin: ContractAddress, _class_hash: ClassHash) {
         self.admin.write(_admin);
-        // self.proposed_admin.write(Option::None(()));
+        self.proposed_admin.write(Option::None(()));
         self.class_hash.write(_class_hash);
     }
 
@@ -64,22 +64,22 @@ mod Factory {
         }
 
         /// @dev Returns the admin role
-        fn get_proposed_admin(self: @ContractState) -> ContractAddress {
-            self.proposed_admin.read(self.admin.read())
+        fn get_proposed_admin(self: @ContractState) -> Option<ContractAddress> {
+            self.proposed_admin.read()
         }
 
         /// @dev Admin role can propose a new admin
         fn changeAdmin(ref self: ContractState, new_admin: ContractAddress) {
             self._is_admin_caller();
-            self.proposed_admin.write(self.admin.read(), new_admin)
+            self.proposed_admin.write(Option::Some(new_admin));
         }
 
         /// @dev Admin role can propose a new admin
         fn acceptAdmin(ref self: ContractState) {
             self._is_proposed_admin_caller();
-            let proposed_admin = self.proposed_admin.read(self.admin.read());
-            self.admin.write(proposed_admin);
-        // self.proposed_admin.write(proposed_admin, proposed_admin);
+            let proposed_admin = self.proposed_admin.read();
+            self.admin.write(proposed_admin.unwrap());
+            self.proposed_admin.write(Option::None(()));
         }
 
         /// @dev Admin role can change class_hash of anchoring contract
@@ -110,7 +110,7 @@ mod Factory {
 
             // Adding the contract to the whitelist mapping
             let (deployed_addr, _err) = result.unwrap();
-            self.whitelist.write(deployed_addr, whitelisted);
+            self.all_contracts.write(deployed_addr, whitelisted);
 
             // Adding the contract to the contracts_by_owner mapping
             let nb_existing_contracts = self.contracts_owner_index.read(whitelisted);
@@ -125,14 +125,14 @@ mod Factory {
         fn get_anchor_contract_owner(
             self: @ContractState, anchored_contract_address: ContractAddress
         ) -> ContractAddress {
-            self.whitelist.read(anchored_contract_address)
+            self.all_contracts.read(anchored_contract_address)
         }
 
         fn get_owner_contract_index(self: @ContractState, owner: ContractAddress) -> u16 {
             self.contracts_owner_index.read(owner)
         }
 
-        fn get_owner_contract_by_index(
+        fn get_contract_by_owner_index(
             self: @ContractState, owner: ContractAddress, index: u16
         ) -> ContractAddress {
             self.contracts_by_owner.read((owner, index))
@@ -150,8 +150,9 @@ mod Factory {
 
         /// @dev Internal function that checks if caller is the proposed_admin
         fn _is_proposed_admin_caller(ref self: ContractState) {
-            let proposed_admin = self.proposed_admin.read(self.admin.read());
-            assert(get_caller_address() == proposed_admin, 'NOT_PROPOSED_ADMIN_CALLER');
+            let proposed_admin : Option<ContractAddress> = self.proposed_admin.read();
+            assert(proposed_admin.is_some(), 'NO_PROPOSED_ADMIN');
+            assert(get_caller_address() == proposed_admin.unwrap(), 'NOT_PROPOSED_ADMIN_CALLER');
         }
     }
 }

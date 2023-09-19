@@ -3,24 +3,18 @@ mod anchoring;
 
 #[cfg(test)]
 mod tests {
-    use snforge_std::{ declare, ContractClassTrait, start_prank, stop_prank };
-
+    use snforge_std::{ declare, ContractClassTrait, start_prank, stop_prank, PrintTrait };
     use core::traits::PanicDestruct;
-    use core::option::OptionTrait;
     use starknet::ContractAddress;
-    
     use factory_anchor::factory::FactoryTraitDispatcherTrait;
     use super::factory;
-
-    use array::ArrayTrait;
-    use traits::Into;
-    use traits::TryInto;
-    use core::result::ResultTrait;
-    use starknet::syscalls::deploy_syscall;
-
-
+    use factory_anchor::anchoring::AnchorTraitDispatcherTrait;
+    use super::anchoring;
     use test::test_utils::assert_eq;
-
+    // use core::option::OptionTrait;
+    // use array::ArrayTrait;
+    // use traits::Into;
+    // use traits::TryInto;
 
     #[test]
     #[available_gas(1000000)]
@@ -92,9 +86,10 @@ mod tests {
         dispatcher.changeAdmin(new_admin.try_into().unwrap());
         stop_prank(contract_address);
 
-        let proposed_admin = dispatcher.get_proposed_admin();
+        let proposed_admin_opt = dispatcher.get_proposed_admin();
+        assert(proposed_admin_opt.is_some() , 'no_proposed_admin');
         let expected_proposed_admin : ContractAddress = new_admin.try_into().unwrap();
-        assert_eq(@proposed_admin, @expected_proposed_admin , 'Wrong_propose_admin');
+        assert_eq(@proposed_admin_opt.unwrap(), @expected_proposed_admin , 'Wrong_propose_admin');
     }
 
 
@@ -185,8 +180,190 @@ mod tests {
         let index = factory_dispatcher.get_owner_contract_index(new_admin.try_into().unwrap());
         assert_eq(@index, @1, 'Wrong_number_of_contracts');
 
-        let last_deployed_anchor = factory_dispatcher.get_owner_contract_by_index(new_admin.try_into().unwrap(), index - 1);
+        let last_deployed_anchor = factory_dispatcher.get_contract_by_owner_index(new_admin.try_into().unwrap(), index - 1);
+        let anchor_address : felt252 = last_deployed_anchor.into();
+        // anchor_address.print();
         
+    }
+
+
+    #[test]
+    #[available_gas(10000000)]
+    fn anchoring_authorize_success() {
+        let admin: felt252 = 0x021b328153b45744778795f5c8edd9211da72fca894ef91ea389c479a31f1449;
+        // declare contracts
+        let anchoring_contract_class = declare('Anchoring');
+        let factory_contract_class = declare('Factory');
+        
+        // Deploy Factory instance
+        let mut calldata_array = ArrayTrait::new();
+        calldata_array.append(admin);
+        calldata_array.append(anchoring_contract_class.class_hash.into());
+        let factory_contract_address = factory_contract_class.deploy(@calldata_array).unwrap();
+        let factory_dispatcher = factory::FactoryTraitDispatcher { contract_address: factory_contract_address };
+
+        // Deploy Anchoring instance
+        let anchor_admin: felt252 = 0x02ce9c6303529f79e5bfbd09f9cf52421df68a962177977b8a8cc2074b84c097;
+        start_prank(factory_contract_address, admin.try_into().unwrap());
+        factory_dispatcher.deploy(anchor_admin.try_into().unwrap());
+        stop_prank(factory_contract_address);
+
+        // Retrieve Anchoring dispatcher
+        let index = factory_dispatcher.get_owner_contract_index(anchor_admin.try_into().unwrap());
+        assert_eq(@index, @1, 'Wrong_number_of_contracts');
+        let anchor_address = factory_dispatcher.get_contract_by_owner_index(anchor_admin.try_into().unwrap(), index - 1);
+        let anchor_dispatcher = anchoring::AnchorTraitDispatcher { contract_address: anchor_address };
+
+        // Authorize another address
+        start_prank(anchor_address, anchor_admin.try_into().unwrap());
+        let last_anchor = anchor_dispatcher.authorize(admin.try_into().unwrap());
+        stop_prank(anchor_address);
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    fn anchoring_unauthorize_success() {
+        let admin: felt252 = 0x021b328153b45744778795f5c8edd9211da72fca894ef91ea389c479a31f1449;
+        // declare contracts
+        let anchoring_contract_class = declare('Anchoring');
+        let factory_contract_class = declare('Factory');
+        
+        // Deploy Factory instance
+        let mut calldata_array = ArrayTrait::new();
+        calldata_array.append(admin);
+        calldata_array.append(anchoring_contract_class.class_hash.into());
+        let factory_contract_address = factory_contract_class.deploy(@calldata_array).unwrap();
+        let factory_dispatcher = factory::FactoryTraitDispatcher { contract_address: factory_contract_address };
+
+        // Deploy Anchoring instance
+        let anchor_admin: felt252 = 0x02ce9c6303529f79e5bfbd09f9cf52421df68a962177977b8a8cc2074b84c097;
+        start_prank(factory_contract_address, admin.try_into().unwrap());
+        factory_dispatcher.deploy(anchor_admin.try_into().unwrap());
+        stop_prank(factory_contract_address);
+
+        // Retrieve Anchoring dispatcher
+        let index = factory_dispatcher.get_owner_contract_index(anchor_admin.try_into().unwrap());
+        assert_eq(@index, @1, 'Wrong_number_of_contracts');
+        let anchor_address = factory_dispatcher.get_contract_by_owner_index(anchor_admin.try_into().unwrap(), index - 1);
+        let anchor_dispatcher = anchoring::AnchorTraitDispatcher { contract_address: anchor_address };
+
+        // Authorize another address
+        start_prank(anchor_address, anchor_admin.try_into().unwrap());
+        let last_anchor = anchor_dispatcher.unauthorize(anchor_admin.try_into().unwrap());
+        stop_prank(anchor_address);
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    #[should_panic(expected: ('NOT_ADMIN_CALLER', ))]
+    fn anchoring_unauthorize_failure_because_not_admin() {
+        let admin: felt252 = 0x021b328153b45744778795f5c8edd9211da72fca894ef91ea389c479a31f1449;
+        // declare contracts
+        let anchoring_contract_class = declare('Anchoring');
+        let factory_contract_class = declare('Factory');
+        
+        // Deploy Factory instance
+        let mut calldata_array = ArrayTrait::new();
+        calldata_array.append(admin);
+        calldata_array.append(anchoring_contract_class.class_hash.into());
+        let factory_contract_address = factory_contract_class.deploy(@calldata_array).unwrap();
+        let factory_dispatcher = factory::FactoryTraitDispatcher { contract_address: factory_contract_address };
+
+        // Deploy Anchoring instance
+        let anchor_admin: felt252 = 0x02ce9c6303529f79e5bfbd09f9cf52421df68a962177977b8a8cc2074b84c097;
+        start_prank(factory_contract_address, admin.try_into().unwrap());
+        factory_dispatcher.deploy(anchor_admin.try_into().unwrap());
+        stop_prank(factory_contract_address);
+
+        // Retrieve Anchoring dispatcher
+        let index = factory_dispatcher.get_owner_contract_index(anchor_admin.try_into().unwrap());
+        assert_eq(@index, @1, 'Wrong_number_of_contracts');
+        let anchor_address = factory_dispatcher.get_contract_by_owner_index(anchor_admin.try_into().unwrap(), index - 1);
+        let anchor_dispatcher = anchoring::AnchorTraitDispatcher { contract_address: anchor_address };
+
+        // Unauthorize an address with caller not admin
+        let last_anchor = anchor_dispatcher.unauthorize(anchor_admin.try_into().unwrap());
+    }
+
+    #[test]
+    #[available_gas(20000000)]
+    fn anchoring_anchor_success() {
+        let admin: felt252 = 0x021b328153b45744778795f5c8edd9211da72fca894ef91ea389c479a31f1449;
+        // declare contracts
+        let anchoring_contract_class = declare('Anchoring');
+        let factory_contract_class = declare('Factory');
+        
+        // Deploy Factory instance
+        let mut calldata_array = ArrayTrait::new();
+        calldata_array.append(admin);
+        calldata_array.append(anchoring_contract_class.class_hash.into());
+        let factory_contract_address = factory_contract_class.deploy(@calldata_array).unwrap();
+        let factory_dispatcher = factory::FactoryTraitDispatcher { contract_address: factory_contract_address };
+
+        // Deploy Anchoring instance
+        let anchor_admin: felt252 = 0x02ce9c6303529f79e5bfbd09f9cf52421df68a962177977b8a8cc2074b84c097;
+        start_prank(factory_contract_address, admin.try_into().unwrap());
+        factory_dispatcher.deploy(anchor_admin.try_into().unwrap());
+        stop_prank(factory_contract_address);
+
+        // Retrieve Anchoring dispatcher
+        let index = factory_dispatcher.get_owner_contract_index(anchor_admin.try_into().unwrap());
+        assert_eq(@index, @1, 'Wrong_number_of_contracts');
+        let anchor_address = factory_dispatcher.get_contract_by_owner_index(anchor_admin.try_into().unwrap(), index - 1);
+        let anchor_dispatcher = anchoring::AnchorTraitDispatcher { contract_address: anchor_address };
+
+        // Anchor a test message
+        let all_anchors_before = anchor_dispatcher.get_anchored_values();
+        assert_eq(@all_anchors_before.len(), @0, 'Wrong_number_of_anchors');
+
+        start_prank(anchor_address, anchor_admin.try_into().unwrap());
+        let message : felt252 = 'test';
+        anchor_dispatcher.anchor(message);
+        stop_prank(anchor_address);
+
+        let all_anchors_after = anchor_dispatcher.get_anchored_values();
+        assert_eq(@all_anchors_after.len(), @1, 'Wrong_number_of_anchors');
+        
+        // Print timestamp of the test message
+        // let message_test : felt252 = 'test';
+        // let message_timestamp = anchor_dispatcher.get_anchored_timestamp(message_test);
+        // assert(message_timestamp > 0_u64, 'Wrong_timestamp');
+        
+        let all_timestamps = anchor_dispatcher.get_anchored_timestamps();
+        assert(all_timestamps.len() >= 1_u32, 'Wrong_number_of_timestamps'); 
+    }
+
+    #[test]
+    #[available_gas(20000000)]
+    #[should_panic(expected: ('NOT_WHITELISTED', ))]
+    fn anchoring_anchor_failure_because_not_whitelisted() {
+        let admin: felt252 = 0x021b328153b45744778795f5c8edd9211da72fca894ef91ea389c479a31f1449;
+        // declare contracts
+        let anchoring_contract_class = declare('Anchoring');
+        let factory_contract_class = declare('Factory');
+        
+        // Deploy Factory instance
+        let mut calldata_array = ArrayTrait::new();
+        calldata_array.append(admin);
+        calldata_array.append(anchoring_contract_class.class_hash.into());
+        let factory_contract_address = factory_contract_class.deploy(@calldata_array).unwrap();
+        let factory_dispatcher = factory::FactoryTraitDispatcher { contract_address: factory_contract_address };
+
+        // Deploy Anchoring instance
+        let anchor_admin: felt252 = 0x02ce9c6303529f79e5bfbd09f9cf52421df68a962177977b8a8cc2074b84c097;
+        start_prank(factory_contract_address, admin.try_into().unwrap());
+        factory_dispatcher.deploy(anchor_admin.try_into().unwrap());
+        stop_prank(factory_contract_address);
+
+        // Retrieve Anchoring dispatcher
+        let index = factory_dispatcher.get_owner_contract_index(anchor_admin.try_into().unwrap());
+        assert_eq(@index, @1, 'Wrong_number_of_contracts');
+        let anchor_address = factory_dispatcher.get_contract_by_owner_index(anchor_admin.try_into().unwrap(), index - 1);
+        let anchor_dispatcher = anchoring::AnchorTraitDispatcher { contract_address: anchor_address };
+        
+        // Anchor a test message with caller not whitelisted
+        let message : felt252 = 'test';
+        anchor_dispatcher.anchor(message);
     }
 
 }

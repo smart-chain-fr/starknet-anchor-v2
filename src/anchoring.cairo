@@ -1,7 +1,12 @@
 use array::ArrayTrait;
+use starknet::ContractAddress;
 
 #[starknet::interface]
 trait AnchorTrait<T> {
+    /// @dev Function that adds a user to the whitelist
+    fn authorize(ref self: T, user: ContractAddress);
+    /// @dev Function that removes a user to the whitelist
+    fn unauthorize(ref self: T, user: ContractAddress);
     /// @dev Function that anchor a message
     fn anchor(ref self: T, message: felt252);
     /// @dev Function that retrieves all anchored timestamps
@@ -22,7 +27,8 @@ mod Anchoring {
     // Storage variable used to store the anchored value
     #[storage]
     struct Storage {
-        whitelisted: ContractAddress, // The address of the whitelisted contract
+        admin: ContractAddress, // The admin of the contract which can whitelist new users
+        whitelisted: LegacyMap<ContractAddress, bool>, // The address of the whitelisted contract
         size_index: u128, // size of the array
         message_values: LegacyMap<u128, felt252>, // index, message
         message_timestamp: LegacyMap<felt252, u64> // message, timestamp
@@ -30,17 +36,27 @@ mod Anchoring {
 
     // Function used to initialize the contract
     #[constructor]
-    fn constructor(ref self: ContractState, _whitelisted: ContractAddress) {
-        self.whitelisted.write(_whitelisted);
+    fn constructor(ref self: ContractState, admin: ContractAddress) {
+        self.whitelisted.write(admin, true);
         self.size_index.write(0);
+        self.admin.write(admin);
     }
 
     #[external(v0)]
     impl AnchorImpl of super::AnchorTrait<ContractState> {
+        fn authorize(ref self: ContractState, user: ContractAddress) {
+            self._is_admin_caller();
+            self.whitelisted.write(user, true);
+        }
+        fn unauthorize(ref self: ContractState, user: ContractAddress) {
+            self._is_admin_caller();
+            self.whitelisted.write(user, false);
+        }
+
         // Function used to anchor a new value
         fn anchor(ref self: ContractState, message: felt252) {
+            self._is_whitelisted_caller();
             assert(!(self.message_timestamp.read(message) > 0), 'already_anchored');
-            assert(get_caller_address() == self.whitelisted.read(), 'not_whitelisted_caller');
             self.message_values.write(self.size_index.read(), message);
             self.message_timestamp.write(message, get_block_timestamp());
             self.size_index.write(self.size_index.read() + 1);
@@ -86,6 +102,21 @@ mod Anchoring {
             } else {
                 values
             }
+        }
+    }
+
+    /// @dev Asserts implementation for the Anchoring contract
+    #[generate_trait]
+    impl AssertsImpl of AssertsTrait {
+        /// @dev Internal function that checks if caller is the admin role
+        fn _is_admin_caller(ref self: ContractState) {
+            let admin = self.admin.read();
+            assert(get_caller_address() == admin, 'NOT_ADMIN_CALLER');
+        }
+
+        /// @dev Internal function that checks if caller is whitelisted
+        fn _is_whitelisted_caller(ref self: ContractState) {
+            assert(self.whitelisted.read(get_caller_address()) == true, 'NOT_WHITELISTED');
         }
     }
 }
