@@ -32,7 +32,10 @@ const factory_class_hash = async () => {
 };
 
 const anchoring_class_hash = async () => {
-    return (await import("../deployments/anchoring_class_hash")).default;
+    const env_class_hash = process.env.ANCHOR_CLASS_HASH;
+    return env_class_hash !== undefined
+      ? env_class_hash
+      : (await import("../deployments/anchoring_class_hash")).default;
 };
 
 const deploy = async () => {

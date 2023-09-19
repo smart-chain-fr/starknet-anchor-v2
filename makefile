@@ -58,7 +58,7 @@ declare-anchoring: ##@Scripts - Generate a Anchoring contract
 deploy-factory: ##@Scripts - Generate a Factory contract (FACTORY_CLASS_HASH=0x77ddf272479f55dd022e925e0f53aa31f3cab2afc1491edf700babed6befa80)
 	@$(NPM) run deploy:factory $(FACTORY_CLASS_HASH)
 
-generate-anchoring: ##@Scripts - Invoke the Factory contract to generate a new Anchoring contract
+generate-anchoring: ##@Scripts - Invoke the Factory contract to generate a new Anchoring contract (make generate-anchoring ANCHORING_ADMIN=0x021B328153B45744778795F5C8edd9211da72fca894ef91Ea389C479A31f1449)
 	@$(NPM) run generate:anchoring
 
 view-factory: ##@Scripts - Invoke the Factory contract to retrieve storage information
