@@ -7,19 +7,15 @@ import { saveContractAddress } from "./helpers";
 // Read environment variables from .env file
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
-
 console.log("connect wallet")
 
 // initialize provider
 const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_GOERLI } })
 // const provider = new Provider({ sequencer: { baseUrl:"http://127.0.0.1:5050"  } });
-
 const privateKey = process.env.ACCOUNT_PRIVKEY;
 const accountAddress = process.env.ACCOUNT_ADDRESS;
-
 const account = new Account(provider, accountAddress, privateKey);
 
-console.log(account)
 
 const get_anchoring_admin = async () => {
     const args = process.argv.slice(2);
@@ -32,7 +28,7 @@ const get_anchoring_admin = async () => {
 // Get the factory address from argument, fallback to saved address
 const factory = async () => {
     const env_factory = process.env.FACTORY_CONTRACT_ADDRESS;
-    return env_factory !== undefined
+    return (env_factory !== undefined) && (env_factory !== "")
       ? env_factory
       : (await import("../deployments/factory")).default;
 };
@@ -62,7 +58,7 @@ const generate = async () => {
         let index = Number(owner_contract_index);
         if (index > 0) {
             let last_contract_index = index - 1;
-            let anchoring_contract = await factoryContract.call("get_owner_contract_by_owner_index", [ANCHORING_ADMIN, last_contract_index.toString(16)]);
+            let anchoring_contract = await factoryContract.call("get_contract_by_owner_index", [ANCHORING_ADMIN, last_contract_index.toString(16)]);
             console.log(`anchoring_contract (hex) : 0x${anchoring_contract.toString(16)}`);
             saveContractAddress("anchoring", `0x${anchoring_contract.toString(16)}`);
         }

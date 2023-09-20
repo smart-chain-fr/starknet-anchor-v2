@@ -64,6 +64,6 @@ generate-anchoring: ##@Scripts - Invoke the Factory contract to generate a new A
 view-factory: ##@Scripts - Invoke the Factory contract to retrieve storage information
 	@$(NPM) run factory:view
 
-anchor-message: ##@Scripts - Generate a Anchor contract (make parse-args ANCHORING=tutu MSG=toto)
+anchor-message: ##@Scripts - Generate a Anchor contract (make anchor-message MSG=toto ANCHORING=0x123123123123123 )
 	@$(NPM) run anchoring:anchor '$(MSG)' $(ANCHORING)
 
