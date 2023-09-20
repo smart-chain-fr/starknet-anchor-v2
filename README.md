@@ -12,7 +12,7 @@ an anchoring contract instance has been generated at: `0x44f99149391e619aaaf55c3
 
 ## Smart contracts
 
-This repository involves two contracts: the Factory contract and the Anchoring contract.
+This repository involves two contracts: the Factory contract and the Anchoring contract. This repository contains the implementation of factory and anchoring contracts written in cairo v2.2.0.
 
 The Factory contract provides an invokable function (`deploy`) to deploy a new anchor contract on-demand. This function can only be called by the administrator role of the Factory.
 
@@ -58,7 +58,7 @@ The Anchoring contract is responsible for anchoring messages (typically hashes o
 
 - Anchor verification: anyone can retrieve anchored messages and their related timestamps without any cost.
 
-One can retrieve an array of all anchored messages with the `get_anchored_values` function, an array of each of message timestamps with `get_anchored_timestamps` function. Additionally, one can retrieve the timestamp for a specific message that has been anchored with `get_anchored_timestamp` function.
+- Retrieval: One can retrieve an array of all anchored messages with the `get_anchored_values` function, an array of each of message timestamps with `get_anchored_timestamps` function. Additionally, one can retrieve the timestamp for a specific message that has been anchored with `get_anchored_timestamp` function.
 
 
 
@@ -69,15 +69,15 @@ One can retrieve an array of all anchored messages with the `get_anchored_values
 - setup your env variables `make setup`. This step needs to be done only once.
 - download npm dependencies `make install`. It installs the "node_module" libraries. The "node_modules" directory can be deleted with the `make clean` command.
 
-This repository contains the implementation of factory and anchoring contracts written in cairo v2.2.0.
+
 
 
 ### Compilation and tests of smart contracts
 
-Compilation of smart contracts can be launched with command `make compile`. It produces the sierra code (JSON) and the casm code (JSON) in the `target/dev` directory.
+- Compilation of smart contracts can be launched with command `make compile`. It produces the sierra code (JSON) and the casm code (JSON) in the `target/dev` directory.
 Actually the compile command relies on the scarb package manager and in fact calls the `scarb build` command.
 
-Tests of smart contracts can be launched with command `make test`. It executes all tests
+- Tests of smart contracts can be launched with command `make test`. It executes all tests
 It also relies on he scarb package manager and in fact calls the `scrab test` command. Tests are based on a test framework  Starknet-foundry, so tests can also be launched with command `snforge`.
 
 If you get the following error,  
@@ -96,27 +96,27 @@ This bug Starknet-foundry will be fixed soon. When it is fixed, you must change 
 
 The repository provides `scripts` directory containing scripts written in TypeScript for deploying smart contracts and interacting with deployed contracts. 
 
-It relies on the Starknet-js library which can be installed with `make install`.
+- It relies on the Starknet-js library which can be installed with `make install`.
 
-Before deploying an instance of a Factory contract , one must declare (only once) the class contract of Anchoring and Factory.
+- Before deploying an instance of a Factory contract , one must declare (only once) the class contract of Anchoring and Factory.
 `make declare-anchoring`
 It should produce locally a file `deployments/anchoring_class_hash.ts` with the address of the anchoring class hash.
 `make declare-factory`
 It should produce locally a file `deployments/factory_class_hash.ts` with the address of the factory class hash.
 
 
-Once class contract have been declared, an instance can be produced by deploying the factory contract.
+- Once class contract have been declared, an instance can be produced by deploying the factory contract.
 `make deploy-factory`
 It should produce locally a file `deployments/factory.ts` with the address of the factory smart contract.
 
-Once the Factory contract has been deployed, the instance is available for producing a new Anchoring contract.
+- Once the Factory contract has been deployed, the instance is available for producing a new Anchoring contract.
 `make generate-anchoring`
 It should produce locally a file `deployments/anchoring.ts` with the address of the anchoring smart contract.
 
 ### Anchor some !
-Anchor a message
+- Anchor a message
 `make anchor-message MSG=itworks!`
-you can also specify the Anchoring contract address as a CLI variable
+- you can also specify the Anchoring contract address as a CLI variable
 ```make anchor-message MSG=toto ANCHORING=0x25d4362a6ff1ddc360126ddc8756c13eedbc4e046a7b0c898ce972f68565a4c```
 
 As you can see the message is specified as a text. Behind the `make anchor-message` command there is a script that transforms the data into hexadecimal before calling the `anchor` entrypoint of the Anchoring contract.

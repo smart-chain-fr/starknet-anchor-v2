@@ -15,6 +15,7 @@ const account = new Account(provider, accountAddress, privateKey);
 // Get the factory address from argument, fallback to saved address
 const parse_args = async () => {
     const args = process.argv.slice(2);
+    console.log("process.argv", process.argv);
     if ( args.length === 2) {
         const msg = args[0];
         const anchor_contract = args[1];
