@@ -2,7 +2,6 @@ import { Provider, Contract, Account, ec, json, constants } from "starknet";
 import * as dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
-// import { buf2hex } from "arrbuf2hex";
 
 // Read environment variables from .env file
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
