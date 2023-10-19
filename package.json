@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "arrbuf2hex": "^1.2.1"
+  }
+}

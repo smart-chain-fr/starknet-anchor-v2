@@ -2,14 +2,21 @@ import { Provider, Contract, Account, ec, json, constants } from "starknet";
 import * as dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
+import { buf2hex } from "arrbuf2hex";
 
 // Read environment variables from .env file
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 // initialize provider and account
-const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_GOERLI } })
+// const provider = new Provider({ sequencer: { network: constants.NetworkName.SN_GOERLI } });
+const provider = new Provider({ rpc: { nodeUrl: "https://json-rpc.starknet-testnet.public.lavanet.xyz/"  } });
 const privateKey = process.env.ACCOUNT_PRIVKEY;
 const accountAddress = process.env.ACCOUNT_ADDRESS;
+
+// const pub = ec.starkCurve.getPublicKey(privateKey, false);
+// // const accountAddress = buf2hex(pub).slice(2, 64);
+// const accountAddress = ec.starkCurve.keccak(pub).toString();
+// console.log("accountAddress", `0x${accountAddress}`);
 const account = new Account(provider, accountAddress, privateKey);
 
 // Get the factory address from argument, fallback to saved address
@@ -46,7 +53,9 @@ const anchor_message = async () => {
         let message_hexa = Buffer.from(message, 'utf8').toString('hex');
         let param = `0x${message_hexa}`;
         const myCall = anchoringContract.populate("anchor", [param]);
-        const anchorCallResponse = await anchoringContract.anchor(myCall.calldata);
+        console.log('Prepare argument for anchor invocation', myCall.calldata);
+        const anchorCallResponse = await anchoringContract['anchor'](myCall.calldata);
+        // const anchorCallResponse = await anchoringContract.anchor(myCall.calldata);
         console.log('Waiting for Anchoring::anchor invocation', anchorCallResponse.transaction_hash);
         await provider.waitForTransaction(anchorCallResponse.transaction_hash);
         console.log("✅ Anchor message.", anchorCallResponse);
