@@ -2,6 +2,19 @@
 This repository implements an "anchoring" feature via a smart contract on Starknet.
 This repository provides smart contracts, tests and scripts for deploying a factory of anchoring contracts.
 
+## prerequisite
+
+scarb - https://docs.swmansion.com/scarb/download.html
+```
+curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | sh
+```
+
+snforge - https://github.com/foundry-rs/starknet-foundry
+```
+curl -L https://raw.githubusercontent.com/foundry-rs/starknet-foundry/master/scripts/install.sh | sh
+```
+
+
 ## Deployed on Testnet
 
 anchoring contract class hash: `0xcc13ee627a2e6d04e16235c47383327c44b902bad98dbbad121b605fe0f0a6`
